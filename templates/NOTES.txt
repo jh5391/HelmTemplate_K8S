@@ -1,0 +1,48 @@
+1. Get the application URL by running these commands:
+{{- if and .Values.ingress.enabled .Values.aws.alb.enabled }}
+  애플리케이션에 접근하려면 ALB Ingress URL을 사용하세요:
+  http{{ if .Values.aws.alb.annotations.certificateArn }}s{{ end }}://{{ .Values.aws.route53.recordName }}.{{ .Values.aws.route53.zoneName }}
+  
+  ALB 상태 확인하기:
+  kubectl get ingress {{ include "mychart.fullname" . }}-alb --namespace {{ .Release.Namespace }}
+{{- else if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "mychart.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "mychart.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "mychart.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "mychart.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+{{- if .Values.aws.ssmParameterStore.enabled }}
+
+SSM 파라미터 스토어 통합 정보:
+------------------------
+SSM 파라미터가 성공적으로 마운트되었는지 확인하려면:
+kubectl exec -it $(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "mychart.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}") --namespace {{ .Release.Namespace }} -- ls -la /mnt/secrets-store
+{{- end }}
+
+{{- if .Values.aws.route53.enabled }}
+
+Route53 DNS 정보:
+------------------------
+애플리케이션 도메인: {{ .Values.aws.route53.recordName }}.{{ .Values.aws.route53.zoneName }}
+{{- if .Values.aws.route53.externalDNS }}
+Route53 레코드는 External-DNS 컨트롤러를 통해 자동으로 생성됩니다.
+{{- else }}
+Route53 레코드가 적용되기까지 잠시 기다려 주세요.
+{{- end }}
+{{- end }}

@@ -1,0 +1,16 @@
+{{- if .Values.aws.ssmParameterStore.enabled }}
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: {{ include "mychart.fullname" . }}-aws-secrets
+spec:
+  provider: aws
+  parameters:
+    objects: |
+      {{- range .Values.aws.ssmParameterStore.parameters }}
+      - objectName: {{ .path }}
+        objectType: ssmparameter
+        objectAlias: {{ .name }}
+      {{- end }}
+---
+{{- end }} 
