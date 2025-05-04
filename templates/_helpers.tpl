@@ -60,3 +60,65 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/* 
+포드 환경 변수 세트 생성 
+*/}}
+{{- define "mychart.podEnvVars" -}}
+{{- range $key, $val := .Values.env }}
+- name: {{ $key }}
+  value: {{ $val | quote }}
+{{- end }}
+{{- if .Values.aws.ssmParameterStore.enabled }}
+{{- range .Values.aws.ssmParameterStore.parameters }}
+- name: {{ .name }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "mychart.fullname" $ }}-aws-secrets
+      key: {{ .name }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/* 
+리소스 설정 헬퍼
+*/}}
+{{- define "mychart.resources" -}}
+{{- if .resources }}
+resources:
+  {{- toYaml .resources | nindent 2 }}
+{{- else if $.Values.resources }}
+resources:
+  {{- toYaml $.Values.resources | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/* 
+컴포넌트 볼륨과 볼륨 마운트 생성 
+*/}}
+{{- define "mychart.volumes" -}}
+{{- if or .volumes $.Values.volumes }}
+volumes:
+{{- if .volumes }}
+{{- toYaml .volumes | nindent 2 }}
+{{- end }}
+{{- if $.Values.volumes }}
+{{- toYaml $.Values.volumes | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+컴포넌트 볼륨 마운트 생성
+*/}}
+{{- define "mychart.volumeMounts" -}}
+{{- if or .volumeMounts $.Values.volumeMounts }}
+volumeMounts:
+{{- if .volumeMounts }}
+{{- toYaml .volumeMounts | nindent 2 }}
+{{- end }}
+{{- if $.Values.volumeMounts }}
+{{- toYaml $.Values.volumeMounts | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,21 @@
+{{- if .Values.configMaps.default.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mychart.fullname" . }}-config
+  labels:
+    {{- include "mychart.labels" . | nindent 4 }}
+data:
+  {{- toYaml .Values.configMaps.default.data | nindent 2 }}
+{{- end }}
+---
+{{- if .Values.configMaps.app.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mychart.fullname" . }}-app-config
+  labels:
+    {{- include "mychart.labels" . | nindent 4 }}
+data:
+  {{- toYaml .Values.configMaps.app.data | nindent 2 }}
+{{- end }} 

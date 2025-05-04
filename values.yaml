@@ -18,52 +18,40 @@ imagePullSecrets: []
 # This is to override the chart name.
 nameOverride: ""
 fullnameOverride: ""
+namespace: ""
+
+# 전역 환경 변수
+env: []
+# - name: ENV_NAME
+#   value: value
+# - name: ENV_NAME_FROM_SECRET
+#   valueFrom:
+#     secretKeyRef:
+#       name: secret-name
+#       key: secret-key
+
+# 전역 리소스 기본값 - 컴포넌트 별로 재정의 가능
+resources:
+  limits:
+    cpu: 1
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# 전역 지속성 설정 - 컴포넌트별로 재정의 가능
+persistence:
+  enabled: false
+  storageClassName: gp2
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
 
 # AWS related configurations
 aws:
   # Region where EKS cluster is deployed
   region: "us-east-1"
   
-  # SSM Parameter Store configuration
-  ssmParameterStore:
-    enabled: false
-    # Parameters to fetch from SSM (will be mounted as environment variables)
-    parameters: []
-    # - name: "APP_SECRET"
-    #   path: "/app/production/secret"
-    # - name: "DB_PASSWORD"
-    #   path: "/app/production/db/password"
-    
-  # ALB Ingress Controller settings
-  alb:
-    enabled: false
-    # AWS Load Balancer Controller annotations
-    annotations:
-      kubernetes.io/ingress.class: alb
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/target-type: ip
-      # SSL Certificate ARN for HTTPS
-      # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:123456789012:certificate/abcd1234-abcd-1234-efgh-5678abcd
-      # Health check settings
-      alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
-      alb.ingress.kubernetes.io/healthcheck-path: /health
-      alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
-      alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
-      alb.ingress.kubernetes.io/success-codes: '200'
-      alb.ingress.kubernetes.io/healthy-threshold-count: '2'
-      alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
-    
-  # Route53 settings for DNS
-  route53:
-    enabled: false
-    # Set to true if using external-dns operator
-    externalDNS: false
-    # Domain settings if manually configuring Route53 record
-    zoneName: "example.com"
-    recordName: "app"
-    # TTL in seconds
-    ttl: 300
-
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
   # Specifies whether a service account should be created
@@ -101,14 +89,43 @@ service:
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 80
+  # 서비스 추가 설정
+  annotations: {}
+  labels: {}
+  # 헤드리스 서비스 옵션
+  headless:
+    enabled: false
+  # 다중 포트 지원
+  additionalPorts: []
+  # - name: metrics
+  #   port: 9090
+  #   targetPort: metrics
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
   className: ""
+  # 인그레스 컨트롤러 유형
+  controllerType: "" # 가능한 값: "nginx", "alb", "traefik" 등
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
+    
+    # AWS ALB 관련 어노테이션 예시
+    # alb.ingress.kubernetes.io/scheme: internet-facing
+    # alb.ingress.kubernetes.io/target-type: ip
+    # alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    # alb.ingress.kubernetes.io/healthcheck-path: /health
+    # alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    # alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    # alb.ingress.kubernetes.io/success-codes: '200'
+    # alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    # alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
+    
+    # Route53/ExternalDNS 관련 어노테이션 예시
+    # external-dns.alpha.kubernetes.io/hostname: app.example.com
+    # external-dns.alpha.kubernetes.io/ttl: "300"
+    
   hosts:
     - host: chart-example.local
       paths:
@@ -118,28 +135,37 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+  
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
     path: /
     port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
 readinessProbe:
   httpGet:
     path: /
     port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# 스타트업 프로브 추가
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:
@@ -148,22 +174,75 @@ autoscaling:
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
+  # 추가 메트릭 설정
+  additionalMetrics: []
+  # - type: Resource
+  #   resource:
+  #     name: memory
+  #     target:
+  #       type: Utilization
+  #       averageUtilization: 80
+
+# ConfigMap 설정
+configMaps:
+  # 기본 ConfigMap
+  default:
+    enabled: false
+    data: {}
+    # key: value
+  # 애플리케이션 ConfigMap
+  app:
+    enabled: false
+    data: {}
+    # application.yaml: |
+    #   key: value
+
+# Secrets 설정
+secrets:
+  # 기본 Secret
+  default:
+    enabled: false
+    data: {}
+    # key: dmFsdWU=  # base64 encoded
+  # 애플리케이션 Secret
+  app:
+    enabled: false
+    data: {}
+    # secret.yaml: |
+    #   key: value
 
 # Additional volumes on the output Deployment definition.
 volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
+# - name: config-volume
+#   configMap:
+#     name: special-config
 #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
+# - name: config-volume
+#   mountPath: "/etc/config"
 #   readOnly: true
 
+# 노드 선택기, 톨러레이션, 어피니티 설정
 nodeSelector: {}
 
 tolerations: []
 
 affinity: {}
+
+# 네트워크 정책
+networkPolicy:
+  enabled: false
+  # 허용할 인그레스 소스
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: app-name
+  # 허용할 이그레스 대상
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: app-name
