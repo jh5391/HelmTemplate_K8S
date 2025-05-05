@@ -246,3 +246,11 @@ networkPolicy:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: app-name
+
+# Pod Disruption Budget 설정              
+podDisruptionBudget:
+  enabled: false
+  # minAvailable 또는 maxUnavailable 중 하나만 설정해야 함
+  minAvailable: 1
+  # maxUnavailable: 1
+  annotations: {}

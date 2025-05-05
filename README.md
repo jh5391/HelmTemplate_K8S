@@ -10,6 +10,7 @@
 - **ConfigMap 및 Secret 관리**: 다양한 구성 및 시크릿 관리 기능 제공
 - **네트워크 정책**: Kubernetes NetworkPolicy를 통한 보안 강화
 - **확장성**: HPA(Horizontal Pod Autoscaler)를 통한 자동 스케일링 기능
+- **가용성 관리**: PodDisruptionBudget을 통한 계획된 중단 시 가용성 보장
 
 ## 사전 요구사항
 
@@ -61,6 +62,8 @@ kubectl get all -l app.kubernetes.io/instance=my-app -n my-namespace
 | `ingress.controllerType` | 인그레스 컨트롤러 타입(alb, nginx 등) | `""` |
 | `ingress.annotations` | 인그레스 어노테이션 | `{}` |
 | `networkPolicy.enabled` | 네트워크 정책 활성화 | `false` |
+| `podDisruptionBudget.enabled` | PodDisruptionBudget 활성화 | `false` |
+| `podDisruptionBudget.minAvailable` | 최소 가용 Pod 수 | `1` |
 
 전체 구성 옵션은 [values.yaml](values.yaml) 파일을 참조하세요.
 
@@ -103,6 +106,7 @@ ingress:
 - **인그레스**: 외부 액세스 설정
 - **네트워크 정책**: 애플리케이션의 네트워크 트래픽 제어
 - **ConfigMap 및 Secret**: 애플리케이션 구성 및 보안 정보 관리
+- **PodDisruptionBudget**: 클러스터 유지보수 중 애플리케이션 가용성 보장
 
 ## 환경 별 구성
 
@@ -135,6 +139,9 @@ autoscaling:
   minReplicas: 3
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
 ```
 
 ## 문제 해결

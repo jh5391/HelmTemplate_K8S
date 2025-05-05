@@ -46,3 +46,13 @@ Route53 레코드는 External-DNS 컨트롤러를 통해 자동으로 생성됩�
 Route53 레코드가 적용되기까지 잠시 기다려 주세요.
 {{- end }}
 {{- end }}
+
+{{- if .Values.podDisruptionBudget.enabled }}
+
+Pod Disruption Budget 정보:
+------------------------
+PDB 설정: {{ if .Values.podDisruptionBudget.minAvailable }}minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}{{ else }}maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}{{ end }}
+
+PDB 상태를 확인하려면:
+kubectl get pdb {{ include "mychart.fullname" . }} --namespace {{ .Release.Namespace }}
+{{- end }}
